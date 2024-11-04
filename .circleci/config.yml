@@ -5,9 +5,6 @@ orbs:
   node: circleci/node@5
 jobs:
   build-node:
-    jobs:
-      - build:
-          context: Staging Env
     # Build node project
     executor: node/default
     working_directory: ~/project/frontend
@@ -40,7 +37,8 @@ jobs:
 workflows:
   build:
     jobs:
-      - build-node
+      - build-node:
+          context: Staging Env
     # - deploy:
     #     requires:
     #       - build-node
