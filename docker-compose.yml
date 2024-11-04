@@ -1,0 +1,70 @@
+services:
+  cache:
+    image: redis:6.2-alpine
+    container_name: sandbox-redis-cache
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT}:6379'
+    command: redis-server --loglevel warning --requirepass ${REDIS_PASSWORD}
+    volumes: 
+      - cache:/data
+    networks:
+      - app-network
+  db:
+    image: postgres:17.0-alpine
+    container_name: sandbox-redis-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - '${POSTGRES_PORT}:5432'
+    volumes: 
+      - ./database/data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/create_tables.sql
+    networks:
+      - app-network
+  frontend:
+    build: ./frontend
+    image: sandbox-redis-frontend
+    container_name: sandbox-redis-frontend
+    volumes:
+      - ./frontend/:/app/
+    ports:
+      - '${FRONTEND_PORT}:3000'
+    command: npm run dev
+    environment:
+      - BACKEND_URL=http://backend:${BACKEND_PORT}
+    depends_on:
+      - backend
+    networks:
+      - app-network
+  backend:
+    build: ./backend
+    image: sandbox-redis-backend
+    container_name: sandbox-redis-backend
+    volumes:
+      - ./backend/:/app/
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_PORT=${REDIS_PORT}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - '${BACKEND_PORT}:3000'
+    depends_on:
+      - cache
+      - db
+    command: npm start
+    networks:
+      - app-network
+volumes:
+  cache:
+    driver: local
+networks:
+  app-network:
